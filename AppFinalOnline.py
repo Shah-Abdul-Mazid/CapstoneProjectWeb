@@ -16,8 +16,6 @@ from streamlit_option_menu import option_menu
 import os
 import random
 from PIL import Image, ImageDraw, ImageFont
-import torch
-from ultralytics import YOLO
 import pandas as pd
 import numpy as np
 import cv2
@@ -51,14 +49,24 @@ logger.info(f"Base Directory: {BASE_DIR}")
 if not root_model_path.exists():
     st.error(f"Dataset directory not found: {root_model_path}")
     logger.error(f"Dataset directory not found: {root_model_path}")
+
     st.stop()
 
 MODEL_PATHS = {
-    "Dataset 1": BASE_DIR / "models" / "Dataset001"/"Balance"/"Hybrid_MobDenseNet_CBAM_GradCAM.h5",
-    "Dataset 2": BASE_DIR/"models"/"Dataset002"/"Balance"/"FinalModel"/"Hybrid_MobDenseNet_CBAM_GradCAM.h5",
-    "Dataset 3": BASE_DIR / "models" / "DatasetCombined"/ "Balance" / "Hybrid_MobDenseNet_CBAM_GradCAM.h5",
-    "Combine 3 Dataset": BASE_DIR / "models" / "Combine3_dataset" / "Imbalance" / "FinalModel" /"Hybrid_MobDenseNet_CBAM_GradCAM.h5",
+    "Combined Dataset (Balanced)": "https://github.com/Shah Abdul Mazid/CapstoneProjectWeb/raw/main/Hybrid_MobDenseNet_CBAM_GradCAM.h5",
+    "Dataset 002 (Balanced)": "https://github.com/Shah Abdul Mazid/CapstoneProjectWeb/raw/main/Dataset002_Model.h5",
+    "Dataset 001 (Balanced)": "https://github.com/Shah Abdul Mazid/CapstoneProjectWeb/raw/main/Dataset001_Model.h5",
+    "Combined 3 Datasets (Imbalanced)": "https://github.com/Shah Abdul Mazid/CapstoneProjectWeb/raw/main/Combine3_Model.h5"
 }
+
+
+
+# MODEL_PATHS = {
+#     "Dataset 1": BASE_DIR / "models" / "Dataset001"/"Balance"/"Hybrid_MobDenseNet_CBAM_GradCAM.h5",
+#     "Dataset 2": BASE_DIR/"models"/"Dataset002"/"Balance"/"FinalModel"/"Hybrid_MobDenseNet_CBAM_GradCAM.h5",
+#     "Dataset 3": BASE_DIR / "models" / "DatasetCombined"/ "Balance" / "Hybrid_MobDenseNet_CBAM_GradCAM.h5",
+#     "Combine 3 Dataset": BASE_DIR / "models" / "Combine3_dataset" / "Imbalance" / "FinalModel" /"Hybrid_MobDenseNet_CBAM_GradCAM.h5",
+# }
 
 CLASS_NAMES = ["Glioma", "Meningioma", "No Tumor", "Pituitary"]
 DEFAULT_LAST_CONV_LAYER = "additional_gradcam_layer"  # Change if your model uses a different name (e.g., 'top_conv', 'conv5_block3_out')
