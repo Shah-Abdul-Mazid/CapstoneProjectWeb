@@ -1,0 +1,15 @@
+,precision,recall,f1-score,support
+Glioma,0.8764044943820225,0.9454545454545454,0.9096209912536443,165.0
+Meningioma,0.922077922077922,0.8606060606060606,0.890282131661442,165.0
+No-tumor,0.9815950920245399,0.9696969696969697,0.975609756097561,165.0
+accuracy,0.9252525252525252,0.9252525252525252,0.9252525252525252,0.9252525252525252
+macro avg,0.9266925028281615,0.9252525252525253,0.9251709596708824,495.0
+weighted avg,0.9266925028281615,0.9252525252525252,0.9251709596708824,495.0
+Model,Hybrid_CBAM_MobDenseNet,Hybrid_CBAM_MobDenseNet,Hybrid_CBAM_MobDenseNet,Hybrid_CBAM_MobDenseNet
+Dataset,Brain Tumor MRI (Balanced),Brain Tumor MRI (Balanced),Brain Tumor MRI (Balanced),Brain Tumor MRI (Balanced)
+Input Size,Hybrid MobileNetV2+DenseNet121+CBAM 224x224,Hybrid MobileNetV2+DenseNet121+CBAM 224x224,Hybrid MobileNetV2+DenseNet121+CBAM 224x224,Hybrid MobileNetV2+DenseNet121+CBAM 224x224
+Test Accuracy,0.931313,0.931313,0.931313,0.931313
+Macro F1,0.925171,0.925171,0.925171,0.925171
+Inference (ms/img),778.0,778.0,778.0,778.0
+Params (M),10.144,10.144,10.144,10.144
+Classes Found,"Glioma, Meningioma, No-tumor","Glioma, Meningioma, No-tumor","Glioma, Meningioma, No-tumor","Glioma, Meningioma, No-tumor"

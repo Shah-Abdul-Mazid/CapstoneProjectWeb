@@ -1,0 +1,2 @@
+Model with input image size,Dataset,Accuracy,AUC,Loss,Precision,Recall,F1 Score,Inference time (ms)
+Hybrid_MobDenseNet_CBAM_GradCAM 224x224,Brain Tumor MRI (Balanced),0.910798,0.99147,0.237247,0.915465,0.910798,0.910438,27.81
