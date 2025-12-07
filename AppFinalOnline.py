@@ -10,15 +10,54 @@ import base64
 import os
 import time
 from pathlib import Path
+import tempfile
+import streamlit as st
+from streamlit_option_menu import option_menu
+import os
+import random
+from PIL import Image, ImageDraw, ImageFont
+import torch
+from ultralytics import YOLO
+import pandas as pd
+import numpy as np
+import cv2
+import time
+from pathlib import Path
+import sys
+import asyncio
+import platform
+import warnings
+import io
+import base64
+from datetime import datetime
+import logging
+from logging.handlers import RotatingFileHandler
+import plotly.express as px
 
 # Define base directory
 BASE_DIR = Path(__file__).parent
 # ------------------- Model Paths -------------------
+# Define base directory and dataset path
+root_model_path = BASE_DIR / "models"
+
+# Validate base directory
+if not BASE_DIR.exists():
+    st.error(f"Base directory not found: {BASE_DIR}")
+    logger.error(f"Base directory not found: {BASE_DIR}")
+    st.stop()
+logger.info(f"Base Directory: {BASE_DIR}")
+
+# Validate dataset directory
+if not root_model_path.exists():
+    st.error(f"Dataset directory not found: {root_model_path}")
+    logger.error(f"Dataset directory not found: {root_model_path}")
+    st.stop()
+
 MODEL_PATHS = {
-    "Dataset 1": os.path.join(BASE_DIR, "models", "Dataset001/Balance/Hybrid_MobDenseNet_CBAM_GradCAM.h5"),
-    "Dataset 2": os.path.join(BASE_DIR, "models", "Dataset002/Balance/FinalModel/Hybrid_MobDenseNet_CBAM_GradCAM.h5"),
-    "Dataset 3": os.path.join(BASE_DIR, "models", "DatasetCombined/Balance/Hybrid_MobDenseNet_CBAM_GradCAM.h5"),
-    "Combine 3 Dataset": os.path.join(BASE_DIR, "models", "Combine3_dataset/Imbalance/FinalModel/Hybrid_MobDenseNet_CBAM_GradCAM.h5")
+    "Dataset 1": BASE_DIR / "models" / "Dataset001"/"Balance"/"Hybrid_MobDenseNet_CBAM_GradCAM.h5",
+    "Dataset 2": BASE_DIR/"models"/"Dataset002"/"Balance"/"FinalModel"/"Hybrid_MobDenseNet_CBAM_GradCAM.h5",
+    "Dataset 3": BASE_DIR / "models" / "DatasetCombined"/ "Balance" / "Hybrid_MobDenseNet_CBAM_GradCAM.h5",
+    "Combine 3 Dataset": BASE_DIR / "models" / "Combine3_dataset" / "Imbalance" / "FinalModel" /"Hybrid_MobDenseNet_CBAM_GradCAM.h5",
 }
 
 CLASS_NAMES = ["Glioma", "Meningioma", "No Tumor", "Pituitary"]
