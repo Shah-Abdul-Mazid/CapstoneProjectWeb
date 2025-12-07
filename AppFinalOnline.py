@@ -9,14 +9,16 @@ import io
 import base64
 import os
 import time
+from pathlib import Path
 
-HF_REPO_ID = "ModelForWeb"  # Your repo
-# Map display name → filename on HF
-HF_MODEL_FILES = {
-    "Combined Dataset (Balanced)": "DatasetCombined/Balance/Hybrid_MobDenseNet_CBAM_GradCAM.h5",
-    "Dataset 002 (Balanced)": "Dataset002/Balance/FinalModel/Hybrid_MobDenseNet_CBAM_GradCAM.h5",
-    "Dataset 001 (Balanced)": "Dataset001/Balance/Hybrid_MobDenseNet_CBAM_GradCAM_GradCAM.h5",
-    "Combined 3 Datasets (Imbalanced)": "Combine3_dataset/Imbalance/FinalModel/Hybrid_MobDenseNet_CBAM_GradCAM.h5"
+# Define base directory
+BASE_DIR = Path(__file__).parent
+# ------------------- Model Paths -------------------
+MODEL_PATHS = {
+    "Dataset 1": os.path.join(BASE_DIR, "models", "Dataset001/Balance/Hybrid_MobDenseNet_CBAM_GradCAM.h5"),
+    "Dataset 2": os.path.join(BASE_DIR, "models", "Dataset002/Balance/FinalModel/Hybrid_MobDenseNet_CBAM_GradCAM.h5"),
+    "Dataset 3": os.path.join(BASE_DIR, "models", "DatasetCombined/Balance/Hybrid_MobDenseNet_CBAM_GradCAM.h5"),
+    "Combine 3 Dataset": os.path.join(BASE_DIR, "models", "Combine3_dataset/Imbalance/FinalModel/Hybrid_MobDenseNet_CBAM_GradCAM.h5")
 }
 
 CLASS_NAMES = ["Glioma", "Meningioma", "No Tumor", "Pituitary"]
