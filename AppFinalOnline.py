@@ -10,7 +10,6 @@ import os
 import time
 from pathlib import Path
 import requests
-from tqdm import tqdm
 
 # ------------------- USE RAW GITHUB URLs (THIS WORKS!) -------------------
 MODEL_PATHS = {
