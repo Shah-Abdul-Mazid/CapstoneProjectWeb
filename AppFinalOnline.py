@@ -34,23 +34,7 @@ import plotly.express as px
 
 # Define base directory
 BASE_DIR = Path(__file__).parent
-# ------------------- Model Paths -------------------
-# Define base directory and dataset path
-root_model_path = BASE_DIR / "models"
-
-# Validate base directory
-if not BASE_DIR.exists():
-    st.error(f"Base directory not found: {BASE_DIR}")
-    logger.error(f"Base directory not found: {BASE_DIR}")
-    st.stop()
-logger.info(f"Base Directory: {BASE_DIR}")
-
-# Validate dataset directory
-if not root_model_path.exists():
-    st.error(f"Dataset directory not found: {root_model_path}")
-    logger.error(f"Dataset directory not found: {root_model_path}")
-
-    st.stop()
+# ------------------- Constants -------------------
 
 MODEL_PATHS = {
     "Combined Dataset (Balanced)": "https://github.com/Shah-Abdul-Mazid/CapstoneProjectWeb/blob/main/models/DatasetCombined/Balance/Hybrid_MobDenseNet_CBAM_GradCAM.h5",
