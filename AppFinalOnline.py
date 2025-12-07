@@ -53,10 +53,10 @@ if not root_model_path.exists():
     st.stop()
 
 MODEL_PATHS = {
-    "Combined Dataset (Balanced)": "https://github.com/Shah Abdul Mazid/CapstoneProjectWeb/raw/main/Hybrid_MobDenseNet_CBAM_GradCAM.h5",
-    "Dataset 002 (Balanced)": "https://github.com/Shah Abdul Mazid/CapstoneProjectWeb/raw/main/Dataset002_Model.h5",
-    "Dataset 001 (Balanced)": "https://github.com/Shah Abdul Mazid/CapstoneProjectWeb/raw/main/Dataset001_Model.h5",
-    "Combined 3 Datasets (Imbalanced)": "https://github.com/Shah Abdul Mazid/CapstoneProjectWeb/raw/main/Combine3_Model.h5"
+    "Combined Dataset (Balanced)": "https://github.com/Shah-Abdul-Mazid/CapstoneProjectWeb/blob/main/models/DatasetCombined/Balance/Hybrid_MobDenseNet_CBAM_GradCAM.h5",
+    "Dataset 2 (Balanced)": "https://github.com/Shah-Abdul-Mazid/CapstoneProjectWeb/blob/main/models/Dataset002/Balance/FinalModel/Hybrid_MobDenseNet_CBAM_GradCAM.h5",
+    "Dataset 1 (Balanced)": "https://github.com/Shah-Abdul-Mazid/CapstoneProjectWeb/blob/main/models/Dataset001/Balance/Hybrid_MobDenseNet_CBAM_GradCAM.h5",
+    "Combined 3 Datasets (Imbalanced)": "https://github.com/Shah-Abdul-Mazid/CapstoneProjectWeb/blob/main/models/Combine3_dataset/Imbalance/FinalModel/Hybrid_MobDenseNet_CBAM_GradCAM.h5"
 }
 
 
