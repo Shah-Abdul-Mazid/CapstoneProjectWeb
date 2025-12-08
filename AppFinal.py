@@ -22,10 +22,10 @@ import time  # Added for measuring inference time
 
 # ------------------- Configuration (edit these) -------------------
 MODEL_PATHS = {
-    "Combined Dataset (Balanced)": r"E:\models\DatasetCombined\Balance\Hybrid_MobDenseNet_CBAM_GradCAM.h5",
-    "Dataset 002 (Balanced)": r"E:\models\Dataset002\Balance\FinalModel\Hybrid_MobDenseNet_CBAM_GradCAM.h5",
-    "Dataset 001 (Balanced)": r"E:\models\Dataset001\Balance\Hybrid_MobDenseNet_CBAM_GradCAM_GradCAM.h5",
-    "Combined 3 Datasets (Imbalanced)": r"E:\models\Combine3_dataset\Imbalance\FinalModel\Hybrid_MobDenseNet_CBAM_GradCAM.h5"
+    "Combined Dataset (Balanced)": r"E:\Final\CapstoneProject\models\DatasetCombined\Balance\Hybrid_MobDenseNet_CBAM_GradCAM.h5",
+    # "Dataset 002 (Balanced)": r"E:\Final\CapstoneProject\models\Dataset002\Balance\Hybrid_MobDenseNet_CBAM_GradCAM.h5",
+    # "Dataset 001 (Balanced)": r"E:\Final\CapstoneProject\models\Dataset001\Balance\Hybrid_MobDenseNet_CBAM_GradCAM.h5",
+    # "Combined 3 Datasets (Imbalanced)": r"E:\Final\CapstoneProject\models\Combine3_dataset\Imbalance\FinalModel\Hybrid_MobDenseNet_CBAM_GradCAM.h5"
 }
 CLASS_NAMES = ["Glioma", "Meningioma", "No Tumor", "Pituitary"]
 # The name of the last conv layer used for Grad-CAM (adjust to your model)
