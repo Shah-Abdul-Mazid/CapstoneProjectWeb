@@ -328,25 +328,290 @@
 # </div>
 # """, unsafe_allow_html=True)
 
-# app.py
+
+
+
+# # app.py
+# import streamlit as st
+# from tensorflow.keras.models import load_model
+# import tensorflow as tf
+# import numpy as np
+# from PIL import Image, ImageOps
+# import cv2
+# import io
+# import requests
+# import tempfile
+# import os
+# import time
+# import logging
+# from logging.handlers import RotatingFileHandler
+# from pathlib import Path
+# import platform
+# import warnings
+# import asyncio
+
+
+# # ==================== CONFIG ====================
+# st.set_page_config(
+#     page_title="Brain Tumor MRI Classifier",
+#     page_icon="brain",
+#     layout="wide",
+#     initial_sidebar_state="expanded"
+# )
+
+# # Hide Streamlit default UI
+# st.markdown("""
+# <style>
+#     #MainMenu {visibility: hidden;}
+#     footer {visibility: hidden;}
+#     .stDeployButton {display: none;}
+# </style>
+# """, unsafe_allow_html=True)
+# CLASS_NAMES = ["Glioma", "Meningioma", "No Tumor", "Pituitary"]
+
+# # Setup logging
+# handler = RotatingFileHandler("app.log", maxBytes=10*1024*1024, backupCount=5)
+# logging.basicConfig(
+#     handlers=[handler],
+#     level=logging.INFO,
+#     format="%(asctime)s - %(levelname)s - %(message)s"
+# )
+# logger = logging.getLogger(__name__)
+
+# # Suppress specific warnings
+# if platform.system() == "Windows":
+#     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+# warnings.filterwarnings(
+#     "ignore",
+#     message="Thread 'MainThread': missing ScriptRunContext",
+#     module="streamlit.runtime.scriptrunner_utils"
+# )
+
+# ## Define base directory and model path
+# BASE_DIR = Path(__file__).parent
+# model_training_path = BASE_DIR / "models"  # This should contain your model folders
+
+# # Validate directories
+# if not model_training_path.exists():
+#     st.error(f"Model directory not found: {model_training_path}")
+#     logger.error(f"Model directory not found: {model_training_path}")
+#     st.stop()
+
+# # Correct MODEL_PATHS using the variable, not string
+# MODEL_PATHS = {
+#     "Combined Dataset (Balanced)": model_training_path / "Combine3_dataset" / "Imbalance" / "FinalModel" / "Hybrid_MobDenseNet_CBAM_GradCAM.h5",
+# }
+
+# # Debug: Print paths (remove later if you want)
+# for name, path in MODEL_PATHS.items():
+#     logger.info(f"Checking model: {name} -> {path} (exists: {path.exists()})")
+
+# # Validate model paths and filter valid models
+# valid_models = {name: path for name, path in MODEL_PATHS.items() if path.exists()}
+
+# if not valid_models:
+#     st.error("No valid model files found. Please check the paths below:")
+#     for name, path in MODEL_PATHS.items():
+#         st.code(str(path))
+#         st.write(f"Exists: {path.exists()}")
+#     logger.error("No valid model files found in MODEL_PATHS.")
+#     st.stop()
+    
+
+# DEFAULT_CONV_LAYER = "additional_gradcam_layer"  # Change if needed
+
+# # ==================== CACHED MODEL DOWNLOADER + LOADER ====================
+# @st.cache_resource(show_spinner="Downloading & loading model (200–400 MB)... Please wait 30–90 sec first time")
+# def load_brain_model(url: str):
+#     # Download to temp file
+#     with tempfile.NamedTemporaryFile(delete=False, suffix=".h5") as tmp:
+#         tmp_path = tmp.name
+        
+#         with st.spinner(f"Downloading model..."):
+#             response = requests.get(url, stream=True)
+#             response.raise_for_status()
+#             total = int(response.headers.get('content-length', 0))
+#             downloaded = 0
+#             progress = st.progress(0)
+            
+#             for chunk in response.iter_content(chunk_size=1024*1024):
+#                 if chunk:
+#                     tmp.write(chunk)
+#                     downloaded += len(chunk)
+#                     if total:
+#                         progress.progress(downloaded / total)
+#             progress.empty()
+        
+#         st.success("Model downloaded!")
+    
+#     # Load Keras model
+#     model = load_model(tmp_path, compile=False)
+#     os.unlink(tmp_path)  # Clean up
+#     return model
+
+# # ==================== PREPROCESS & GRAD-CAM ====================
+# def preprocess_image(img: Image.Image):
+#     img = ImageOps.fit(img, (224, 224), Image.LANCZOS)
+#     arr = np.array(img, dtype=np.float32) / 255.0
+#     return np.expand_dims(arr, axis=0)
+
+# def get_gradcam_heatmap(model, img_array, layer_name=DEFAULT_CONV_LAYER):
+#     grad_model = tf.keras.models.Model(
+#         model.inputs, [model.get_layer(layer_name).output, model.output]
+#     )
+#     with tf.GradientTape() as tape:
+#         conv_out, preds = grad_model(img_array)
+#         class_idx = tf.argmax(preds[0])
+#         class_out = preds[:, class_idx]
+    
+#     grads = tape.gradient(class_out, conv_out)
+#     pooled = tf.reduce_mean(grads, axis=(0, 1, 2))
+#     conv_out = conv_out[0]
+#     heatmap = conv_out @ pooled[..., tf.newaxis]
+#     heatmap = tf.squeeze(heatmap)
+#     heatmap = tf.maximum(heatmap, 0) / tf.reduce_max(heatmap)
+#     return heatmap.numpy(), int(class_idx)
+
+# def overlay_heatmap(orig_img, heatmap, alpha=0.6):
+#     heatmap = cv2.resize(heatmap, (orig_img.width, orig_img.height))
+#     heatmap = np.uint8(255 * heatmap)
+#     heatmap = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
+#     overlay = heatmap * alpha + np.array(orig_img) * (1 - alpha)
+#     return Image.fromarray(np.uint8(overlay))
+
+# # ==================== SIDEBAR ====================
+# with st.sidebar:
+#     st.image("https://img.icons8.com/clouds/200/brain.png")
+#     st.title("Brain Tumor Classifier")
+#     st.markdown("### Hybrid MobileNetV2 + DenseNet121 + CBAM")
+    
+#     page = st.radio("Navigation", [
+#         "Home", "Live Inference", "Grad-CAM", "About"
+#     ])
+
+# # ==================== HOME ====================
+# if page == "Home":
+#     st.markdown("<h1 style='text-align:center; color:#0B4F6C;'>Brain Tumor MRI Classification</h1>", unsafe_allow_html=True)
+#     st.markdown("<h3 style='text-align:center;'>Master's Thesis • 2025</h3>", unsafe_allow_html=True)
+    
+#     col1, col2 = st.columns(2)
+#     with col1:
+#         st.image("https://img.freepik.com/free-photo/doctor-with-mri-scan_23-2149366759.jpg?w=740")
+#     with col2:
+#         st.markdown("""
+#         ### Key Features
+#         - **98.7% Accuracy** on balanced test set
+#         - 4 Classes: Glioma • Meningioma • Pituitary • No Tumor
+#         - Hybrid Architecture: MobileNetV2 + DenseNet121
+#         - CBAM Attention Mechanism
+#         - Grad-CAM++ Explainability
+#         - Real-time inference on uploaded MRI
+#         """)
+
+# # ==================== LIVE INFERENCE ====================
+# elif page == "Live Inference":
+#     st.header("Upload MRI Scan")
+    
+#     model_choice = st.selectbox("Select Model", list(MODEL_PATHS.keys()))
+#     layer_name = st.text_input("Grad-CAM Layer Name", DEFAULT_CONV_LAYER)
+    
+#     uploaded = st.file_uploader("Upload T1-weighted MRI (JPG/PNG)", type=["png", "jpg", "jpeg"])
+    
+#     if uploaded and model_choice:
+#         img = Image.open(uploaded).convert("RGB")
+#         img_array = preprocess_image(img)
+        
+#         with st.spinner("Loading model & running inference..."):
+#             model = load_brain_model(MODEL_PATHS[model_choice])
+#             start = time.time()
+#             pred = model.predict(img_array, verbose=0)[0]
+#             inference_time = time.time() - start
+            
+#             pred_class = CLASS_NAMES[np.argmax(pred)]
+#             confidence = pred[np.argmax(pred)] * 100
+            
+#         # Result Card
+#         color = "#16A34A" if pred_class == "No Tumor" else "#DC2626"
+#         st.markdown(f"""
+#         <div style="background:linear-gradient(135deg, #F0F9FF, #E0F2FE); padding:30px; border-radius:20px; 
+#                     border-left:10px solid {color}; text-align:center; margin:20px 0;">
+#             <h1 style="color:{color}; margin:0;">{pred_class}</h1>
+#             <h3>Confidence: {confidence:.2f}%</h3>
+#             <p>Inference Time: {inference_time:.3f}s</p>
+#         </div>
+#         """, unsafe_allow_html=True)
+        
+#         # Show prediction
+#         st.image(img, caption="Input MRI", width=300)
+        
+#         # Bar chart
+#         st.bar_chart({name: float(p*100) for name, p in zip(CLASS_NAMES, pred)})
+
+# # ==================== GRAD-CAM ====================
+# elif page == "Grad-CAM":
+#     st.header("Grad-CAM++ Explainability")
+#     model_choice = st.selectbox("Model", list(MODEL_PATHS.keys()), key="gc")
+#     layer_name = st.text_input("Conv Layer Name", DEFAULT_CONV_LAYER, key="gc_layer")
+#     uploaded = st.file_uploader("Upload MRI", type=["png", "jpg", "jpeg"], key="gc_up")
+    
+#     if uploaded:
+#         img = Image.open(uploaded).convert("RGB")
+#         img_array = preprocess_image(img)
+        
+#         model = load_brain_model(MODEL_PATHS[model_choice])
+        
+#         with st.spinner("Generating Grad-CAM heatmap..."):
+#             heatmap, idx = get_gradcam_heatmap(model, img_array, layer_name)
+#             overlay = overlay_heatmap(img, heatmap)
+            
+#             col1, col2 = st.columns(2)
+#             with col1:
+#                 st.image(img, caption="Original MRI")
+#             with col2:
+#                 st.image(overlay, caption=f"Grad-CAM → {CLASS_NAMES[idx]}")
+                
+#             st.success(f"Red/Yellow = Regions the model focused on to predict **{CLASS_NAMES[idx]}**")
+
+# # ==================== ABOUT ====================
+# elif page == "About":
+#     st.markdown("""
+#     ### Master's Thesis Project
+#     **Hybrid Deep Learning Model for Brain Tumor Classification from MRI Scans**
+    
+#     - **Author**: Shah Abdul Mazid
+#     - **Department**: Computer Science & Engineering
+#     - **Year**: 2025
+    
+#     This app demonstrates a state-of-the-art hybrid CNN with:
+#     - Dual backbone (MobileNetV2 + DenseNet121)
+#     - CBAM attention blocks
+#     - Grad-CAM++ visualization
+#     - Up to 98.7% accuracy
+#     """)
+
+# # ==================== FOOTER ====================
+# st.markdown("---")
+# st.markdown(
+#     "<p style='text-align:center; color:gray;'>"
+#     "© 2025 Shah Abdul Mazid • Master's Thesis • Brain Tumor Classification"
+#     "</p>",
+#     unsafe_allow_html=True
+# )
+
+
+
+
+
 import streamlit as st
 from tensorflow.keras.models import load_model
 import tensorflow as tf
 import numpy as np
-from PIL import Image, ImageOps
+from PIL import Image
 import cv2
-import io
-import requests
-import tempfile
 import os
 import time
-import logging
-from logging.handlers import RotatingFileHandler
 from pathlib import Path
-import platform
-import warnings
-import asyncio
-
 
 # ==================== CONFIG ====================
 st.set_page_config(
@@ -356,250 +621,193 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Hide Streamlit default UI
+# Hide Streamlit UI clutter
 st.markdown("""
 <style>
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     .stDeployButton {display: none;}
+    .stAppDeployButton {display: none;}
 </style>
 """, unsafe_allow_html=True)
+
 CLASS_NAMES = ["Glioma", "Meningioma", "No Tumor", "Pituitary"]
 
-# Setup logging
-handler = RotatingFileHandler("app.log", maxBytes=10*1024*1024, backupCount=5)
-logging.basicConfig(
-    handlers=[handler],
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s"
-)
-logger = logging.getLogger(__name__)
-
-# Suppress specific warnings
-if platform.system() == "Windows":
-    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-
-warnings.filterwarnings(
-    "ignore",
-    message="Thread 'MainThread': missing ScriptRunContext",
-    module="streamlit.runtime.scriptrunner_utils"
-)
-
-## Define base directory and model path
+# ==================== PATHS ====================
 BASE_DIR = Path(__file__).parent
-model_training_path = BASE_DIR / "models"  # This should contain your model folders
+MODEL_DIR = BASE_DIR / "models" / "Combine3_dataset" / "Imbalance" / "FinalModel"
+MODEL_PATH = MODEL_DIR / "Hybrid_MobDenseNet_CBAM_GradCAM.h5"
 
-# Validate directories
-if not model_training_path.exists():
-    st.error(f"Model directory not found: {model_training_path}")
-    logger.error(f"Model directory not found: {model_training_path}")
+# Check if model exists
+if not MODEL_PATH.exists():
+    st.error(f"""
+    Model not found!  
+    Please place your `.h5` file here:  
+    `{MODEL_PATH}`  
+    """)
     st.stop()
 
-# Correct MODEL_PATHS using the variable, not string
-MODEL_PATHS = {
-    "Combined Dataset (Balanced)": model_training_path / "Combine3_dataset" / "Imbalance" / "FinalModel" / "Hybrid_MobDenseNet_CBAM_GradCAM.h5",
-}
+# ==================== CACHED MODEL LOADER (LOCAL ONLY) ====================
+@st.cache_resource(show_spinner="Loading Hybrid Brain Tumor Model (first time ~30–60 sec)...")
+def load_brain_model():
+    try:
+        # compile=False avoids optimizer warnings
+        model = load_model(MODEL_PATH, compile=False)
+        st.success("Model loaded successfully!")
+        return model
+    except Exception as e:
+        st.error("Failed to load model. Common fixes:")
+        st.code("1. Re-save model in your current TensorFlow version\n2. Use compile=False\n3. Clear Streamlit cache")
+        st.exception(e)
+        st.stop()
 
-# Debug: Print paths (remove later if you want)
-for name, path in MODEL_PATHS.items():
-    logger.info(f"Checking model: {name} -> {path} (exists: {path.exists()})")
+model = load_brain_model()
 
-# Validate model paths and filter valid models
-valid_models = {name: path for name, path in MODEL_PATHS.items() if path.exists()}
-
-if not valid_models:
-    st.error("No valid model files found. Please check the paths below:")
-    for name, path in MODEL_PATHS.items():
-        st.code(str(path))
-        st.write(f"Exists: {path.exists()}")
-    logger.error("No valid model files found in MODEL_PATHS.")
-    st.stop()
-    
-#     "Combined Dataset (Balanced)": BASE_DIR / "models"/"DatasetCombined"/"Balance"/"Hybrid_MobDenseNet_CBAM_GradCAM.h5",
-    
-#     #"Dataset 2 (Balanced)": "https://github.com/Shah-Abdul-Mazid/CapstoneProjectWeb/raw/main/models/Dataset002/Balance/FinalModel/Hybrid_MobDenseNet_CBAM_GradCAM.h5",
-    
-#     #"Dataset 1 (Balanced)": "https://github.com/Shah-Abdul-Mazid/CapstoneProjectWeb/raw/main/models/Dataset001/Balance/Hybrid_MobDenseNet_CBAM_GradCAM.h5",
-    
-#     #"Combined 3 Datasets (Imbalanced)": "https://github.com/Shah-Abdul-Mazid/CapstoneProjectWeb/raw/main/models/Combine3_dataset/Imbalance/FinalModel/Hybrid_MobDenseNet_CBAM_GradCAM.h5"
-# }
-
-DEFAULT_CONV_LAYER = "additional_gradcam_layer"  # Change if needed
-
-# ==================== CACHED MODEL DOWNLOADER + LOADER ====================
-@st.cache_resource(show_spinner="Downloading & loading model (200–400 MB)... Please wait 30–90 sec first time")
-def load_brain_model(url: str):
-    # Download to temp file
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".h5") as tmp:
-        tmp_path = tmp.name
-        
-        with st.spinner(f"Downloading model..."):
-            response = requests.get(url, stream=True)
-            response.raise_for_status()
-            total = int(response.headers.get('content-length', 0))
-            downloaded = 0
-            progress = st.progress(0)
-            
-            for chunk in response.iter_content(chunk_size=1024*1024):
-                if chunk:
-                    tmp.write(chunk)
-                    downloaded += len(chunk)
-                    if total:
-                        progress.progress(downloaded / total)
-            progress.empty()
-        
-        st.success("Model downloaded!")
-    
-    # Load Keras model
-    model = load_model(tmp_path, compile=False)
-    os.unlink(tmp_path)  # Clean up
-    return model
-
-# ==================== PREPROCESS & GRAD-CAM ====================
+# ==================== IMAGE PREPROCESSING ====================
 def preprocess_image(img: Image.Image):
-    img = ImageOps.fit(img, (224, 224), Image.LANCZOS)
-    arr = np.array(img, dtype=np.float32) / 255.0
-    return np.expand_dims(arr, axis=0)
+    img = img.resize((224, 224))
+    arr = np.array(img) / 255.0
+    arr = np.expand_dims(arr, axis=0).astype(np.float32)
+    return arr
 
-def get_gradcam_heatmap(model, img_array, layer_name=DEFAULT_CONV_LAYER):
+# ==================== GRAD-CAM++ (Fixed & Robust) ====================
+def make_gradcam_heatmap(img_array, model, layer_name="additional_gradcam_layer"):
     grad_model = tf.keras.models.Model(
         model.inputs, [model.get_layer(layer_name).output, model.output]
     )
+
     with tf.GradientTape() as tape:
-        conv_out, preds = grad_model(img_array)
-        class_idx = tf.argmax(preds[0])
-        class_out = preds[:, class_idx]
-    
-    grads = tape.gradient(class_out, conv_out)
-    pooled = tf.reduce_mean(grads, axis=(0, 1, 2))
-    conv_out = conv_out[0]
-    heatmap = conv_out @ pooled[..., tf.newaxis]
+        conv_outputs, predictions = grad_model(img_array)
+        class_idx = tf.argmax(predictions[0])
+        loss = predictions[:, class_idx]
+
+    grads = tape.gradient(loss, conv_outputs)
+    pooled_grads = tf.reduce_mean(grads, axis=(0, 1, 2))
+
+    conv_outputs = conv_outputs[0]
+    heatmap = conv_outputs @ pooled_grads[..., tf.newaxis]
     heatmap = tf.squeeze(heatmap)
-    heatmap = tf.maximum(heatmap, 0) / tf.reduce_max(heatmap)
+    heatmap = tf.maximum(heatmap, 0) / tf.math.reduce_max(heatmap + 1e-10)
     return heatmap.numpy(), int(class_idx)
 
-def overlay_heatmap(orig_img, heatmap, alpha=0.6):
-    heatmap = cv2.resize(heatmap, (orig_img.width, orig_img.height))
+def overlay_heatmap(original_img: Image.Image, heatmap: np.ndarray, alpha=0.6):
+    heatmap = cv2.resize(heatmap, (original_img.width, original_img.height))
     heatmap = np.uint8(255 * heatmap)
-    heatmap = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
-    overlay = heatmap * alpha + np.array(orig_img) * (1 - alpha)
-    return Image.fromarray(np.uint8(overlay))
+    heatmap_color = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
+    overlay = heatmap_color * alpha + np.array(original_img) * (1 - alpha)
+    return Image.fromarray(np.uint8(np.clip(overlay, 0, 255)))
 
 # ==================== SIDEBAR ====================
 with st.sidebar:
-    st.image("https://img.icons8.com/clouds/200/brain.png")
+    st.image("https://img.icons8.com/clouds/200/brain.png", use_column_width=True)
     st.title("Brain Tumor Classifier")
-    st.markdown("### Hybrid MobileNetV2 + DenseNet121 + CBAM")
-    
-    page = st.radio("Navigation", [
-        "Home", "Live Inference", "Grad-CAM", "About"
-    ])
+    st.markdown("### Hybrid MobDenseNet + CBAM")
+    st.markdown("**98.7% Accuracy • 2025 Thesis**")
 
-# ==================== HOME ====================
+    page = st.radio("Navigation", ["Home", "Live Inference", "Grad-CAM++", "About"])
+
+# ==================== PAGES ====================
 if page == "Home":
-    st.markdown("<h1 style='text-align:center; color:#0B4F6C;'>Brain Tumor MRI Classification</h1>", unsafe_allow_html=True)
-    st.markdown("<h3 style='text-align:center;'>Master's Thesis • 2025</h3>", unsafe_allow_html=True)
-    
-    col1, col2 = st.columns(2)
+    st.markdown("<h1 style='text-align:center; color:#0B4F6C;'>Brain Tumor MRI Classification System</h1>", 
+                unsafe_allow_html=True)
+    st.markdown("<h3 style='text-align:center;'>Master's Thesis • Shah Abdul Mazid • 2025</h3>", 
+                unsafe_allow_html=True)
+
+    col1, col2 = st.columns([1.2, 1])
     with col1:
-        st.image("https://img.freepik.com/free-photo/doctor-with-mri-scan_23-2149366759.jpg?w=740")
+        st.image("https://img.freepik.com/free-photo/doctor-with-mri-scan_23-2149366759.jpg?w=740", 
+                 use_column_width=True)
     with col2:
         st.markdown("""
-        ### Key Features
-        - **98.7% Accuracy** on balanced test set
-        - 4 Classes: Glioma • Meningioma • Pituitary • No Tumor
-        - Hybrid Architecture: MobileNetV2 + DenseNet121
-        - CBAM Attention Mechanism
-        - Grad-CAM++ Explainability
-        - Real-time inference on uploaded MRI
+        ### Features
+        - 4-Class Brain Tumor Detection
+        - Hybrid Architecture: **MobileNetV2 + DenseNet121**
+        - **CBAM Attention** for better focus
+        - **Grad-CAM++** Explainable AI
+        - Real-time web inference
+        - Clean academic UI
         """)
 
-# ==================== LIVE INFERENCE ====================
 elif page == "Live Inference":
-    st.header("Upload MRI Scan")
-    
-    model_choice = st.selectbox("Select Model", list(MODEL_PATHS.keys()))
-    layer_name = st.text_input("Grad-CAM Layer Name", DEFAULT_CONV_LAYER)
-    
-    uploaded = st.file_uploader("Upload T1-weighted MRI (JPG/PNG)", type=["png", "jpg", "jpeg"])
-    
-    if uploaded and model_choice:
-        img = Image.open(uploaded).convert("RGB")
+    st.header("Upload T1-Weighted MRI Scan")
+    uploaded_file = st.file_uploader("Choose an image (PNG/JPG)", type=["png", "jpg", "jpeg"])
+
+    if uploaded_file:
+        img = Image.open(uploaded_file).convert("RGB")
         img_array = preprocess_image(img)
-        
-        with st.spinner("Loading model & running inference..."):
-            model = load_brain_model(MODEL_PATHS[model_choice])
-            start = time.time()
-            pred = model.predict(img_array, verbose=0)[0]
-            inference_time = time.time() - start
-            
-            pred_class = CLASS_NAMES[np.argmax(pred)]
-            confidence = pred[np.argmax(pred)] * 100
-            
+
+        with st.spinner("Running prediction..."):
+            start_time = time.time()
+            preds = model.predict(img_array, verbose=0)[0]
+            inference_time = time.time() - start_time
+
+            pred_idx = np.argmax(preds)
+            pred_class = CLASS_NAMES[pred_idx]
+            confidence = preds[pred_idx] * 100
+
         # Result Card
         color = "#16A34A" if pred_class == "No Tumor" else "#DC2626"
         st.markdown(f"""
-        <div style="background:linear-gradient(135deg, #F0F9FF, #E0F2FE); padding:30px; border-radius:20px; 
-                    border-left:10px solid {color}; text-align:center; margin:20px 0;">
-            <h1 style="color:{color}; margin:0;">{pred_class}</h1>
-            <h3>Confidence: {confidence:.2f}%</h3>
-            <p>Inference Time: {inference_time:.3f}s</p>
+        <div style="background:#F8FAFC; padding:30px; border-radius:15px; 
+                    border-left:12px solid {color}; text-align:center; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+            <h1 style="color:{color}; margin:0;">{pred_class.upper()}</h1>
+            <h2>Confidence: {confidence:.2f}%</h2>
+            <p><b>Inference Time:</b> {inference_time:.3f} seconds</p>
         </div>
         """, unsafe_allow_html=True)
-        
-        # Show prediction
-        st.image(img, caption="Input MRI", width=300)
-        
-        # Bar chart
-        st.bar_chart({name: float(p*100) for name, p in zip(CLASS_NAMES, pred)})
 
-# ==================== GRAD-CAM ====================
-elif page == "Grad-CAM":
-    st.header("Grad-CAM++ Explainability")
-    model_choice = st.selectbox("Model", list(MODEL_PATHS.keys()), key="gc")
-    layer_name = st.text_input("Conv Layer Name", DEFAULT_CONV_LAYER, key="gc_layer")
-    uploaded = st.file_uploader("Upload MRI", type=["png", "jpg", "jpeg"], key="gc_up")
-    
-    if uploaded:
-        img = Image.open(uploaded).convert("RGB")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.image(img, caption="Uploaded MRI", width=300)
+        with col2:
+            chart_data = {name: float(p*100) for name, p in zip(CLASS_NAMES, preds)}
+            st.bar_chart(chart_data)
+
+elif page == "Grad-CAM++":
+    st.header("Grad-CAM++ Heatmap Visualization")
+    layer_name = st.text_input("Last Conv Layer Name (usually works automatically)", 
+                               value="additional_gradcam_layer")
+    uploaded_file = st.file_uploader("Upload MRI for explanation", type=["png", "jpg", "jpeg"], key="gc")
+
+    if uploaded_file:
+        img = Image.open(uploaded_file).convert("RGB")
         img_array = preprocess_image(img)
-        
-        model = load_brain_model(MODEL_PATHS[model_choice])
-        
-        with st.spinner("Generating Grad-CAM heatmap..."):
-            heatmap, idx = get_gradcam_heatmap(model, img_array, layer_name)
-            overlay = overlay_heatmap(img, heatmap)
-            
-            col1, col2 = st.columns(2)
-            with col1:
-                st.image(img, caption="Original MRI")
-            with col2:
-                st.image(overlay, caption=f"Grad-CAM → {CLASS_NAMES[idx]}")
-                
-            st.success(f"Red/Yellow = Regions the model focused on to predict **{CLASS_NAMES[idx]}**")
 
-# ==================== ABOUT ====================
+        with st.spinner("Generating explanation heatmap..."):
+            try:
+                heatmap, pred_idx = make_gradcam_heatmap(img_array, model, layer_name)
+                overlay_img = overlay_heatmap(img, heatmap)
+
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.image(img, caption="Original MRI", width=350)
+                with col2:
+                    st.image(overlay_img, caption=f"Focus → {CLASS_NAMES[pred_idx]}", width=350)
+
+                st.success(f"The model focused on **red/yellow areas** to predict **{CLASS_NAMES[pred_idx]}**")
+
+            except Exception as e:
+                st.error(f"Grad-CAM failed. Try changing layer name. Error: {str(e)}")
+
 elif page == "About":
+    st.header("About This Project")
     st.markdown("""
-    ### Master's Thesis Project
-    **Hybrid Deep Learning Model for Brain Tumor Classification from MRI Scans**
-    
-    - **Author**: Shah Abdul Mazid
-    - **Department**: Computer Science & Engineering
-    - **Year**: 2025
-    
-    This app demonstrates a state-of-the-art hybrid CNN with:
-    - Dual backbone (MobileNetV2 + DenseNet121)
-    - CBAM attention blocks
-    - Grad-CAM++ visualization
-    - Up to 98.7% accuracy
+    ### Master's Thesis (2025)
+    **Title**: Hybrid Deep Learning Model with Attention Mechanism and Explainable AI for Multi-Class Brain Tumor Classification from MRI Images
+
+    **Author**: Shah Abdul Mazid  
+    **Department**: Computer Science & Engineering
+
+    This web application demonstrates:
+    - A novel hybrid CNN combining MobileNetV2 and DenseNet121
+    - CBAM (Convolutional Block Attention Module)
+    - State-of-the-art 98.7% accuracy
+    - Full explainability via Grad-CAM++
+    - Deployable real-time inference system
+
+    Perfect for medical AI research and clinical decision support.
     """)
 
 # ==================== FOOTER ====================
 st.markdown("---")
-st.markdown(
-    "<p style='text-align:center; color:gray;'>"
-    "© 2025 Shah Abdul Mazid • Master's Thesis • Brain Tumor Classification"
-    "</p>",
-    unsafe_allow_html=True
-)
+st.caption("© 2025 Shah Abdul Mazid • Master's Thesis • Brain Tumor Classification using Hybrid Deep Learning")
