@@ -423,7 +423,7 @@ MODEL_CONFIG = {
 
 # Model paths
 MODEL_PATHS = {
-    "Combined Dataset (Balanced)": BASE_DIR / "model_training_path"  /"DatasetCombined"/"Balance"/"Hybrid_MobDenseNet_CBAM_GradCAM.h5",
+    "Combined Dataset (Balanced)": BASE_DIR / "model_training_path"  /"Combine3_dataset"/"Imbalance"/"FinalModel"/"Hybrid_MobDenseNet_CBAM_GradCAM.h5",
     # "YOLO10_with_AdamW": BASE_DIR / "model_training_path" / "yolov10_AdamW" / "weights" / "best.pt",
     # "YOLO10_with_Adamax": BASE_DIR / "model_training_path" / "yolov10_Adamax" / "weights" / "best.pt",
     # "YOLO10_with_Adam": BASE_DIR / "model_training_path" / "yolov10_Adam" / "weights" / "best.pt",
