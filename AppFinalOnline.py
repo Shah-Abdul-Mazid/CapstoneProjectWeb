@@ -518,7 +518,7 @@ if page == "Home":
 elif page == "Live Inference":
     st.header("Upload MRI Scan")
     
-    model_choice = st.selectbox("Select Model", list(MODEL_URLS.keys()))
+    model_choice = st.selectbox("Select Model", list(MODEL_PATHS.keys()))
     layer_name = st.text_input("Grad-CAM Layer Name", DEFAULT_CONV_LAYER)
     
     uploaded = st.file_uploader("Upload T1-weighted MRI (JPG/PNG)", type=["png", "jpg", "jpeg"])
@@ -528,7 +528,7 @@ elif page == "Live Inference":
         img_array = preprocess_image(img)
         
         with st.spinner("Loading model & running inference..."):
-            model = load_brain_model(MODEL_URLS[model_choice])
+            model = load_brain_model(MODEL_PATHS[model_choice])
             start = time.time()
             pred = model.predict(img_array, verbose=0)[0]
             inference_time = time.time() - start
@@ -556,7 +556,7 @@ elif page == "Live Inference":
 # ==================== GRAD-CAM ====================
 elif page == "Grad-CAM":
     st.header("Grad-CAM++ Explainability")
-    model_choice = st.selectbox("Model", list(MODEL_URLS.keys()), key="gc")
+    model_choice = st.selectbox("Model", list(MODEL_PATHS.keys()), key="gc")
     layer_name = st.text_input("Conv Layer Name", DEFAULT_CONV_LAYER, key="gc_layer")
     uploaded = st.file_uploader("Upload MRI", type=["png", "jpg", "jpeg"], key="gc_up")
     
@@ -564,7 +564,7 @@ elif page == "Grad-CAM":
         img = Image.open(uploaded).convert("RGB")
         img_array = preprocess_image(img)
         
-        model = load_brain_model(MODEL_URLS[model_choice])
+        model = load_brain_model(MODEL_PATHS[model_choice])
         
         with st.spinner("Generating Grad-CAM heatmap..."):
             heatmap, idx = get_gradcam_heatmap(model, img_array, layer_name)
