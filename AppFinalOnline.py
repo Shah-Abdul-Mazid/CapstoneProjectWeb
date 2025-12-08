@@ -391,7 +391,7 @@ BASE_DIR = Path(__file__).parent
 # Class mapping for object detection
 
 # Define base directory and dataset path
-model_training_path = BASE_DIR / "model"
+model_training_path = BASE_DIR / "models"
 
 # Validate base directory
 if not BASE_DIR.exists():
