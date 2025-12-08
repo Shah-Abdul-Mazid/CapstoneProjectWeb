@@ -952,6 +952,8 @@
 # )
 
 
+import os
+os.environ['TF_USE_LEGACY_KERAS'] = '1'  # Force legacy Keras for compatibility
 
 import streamlit as st
 from tensorflow.keras.models import load_model
@@ -1042,9 +1044,16 @@ DEFAULT_CONV_LAYER = "additional_gradcam_layer"
 class FixedDepthwiseConv2D(tf.keras.layers.DepthwiseConv2D):
     """Custom DepthwiseConv2D that ignores 'groups' parameter"""
     def __init__(self, *args, **kwargs):
-        # Remove 'groups' if present
+        # Remove 'groups' if present (not supported in newer TF versions)
         kwargs.pop('groups', None)
         super().__init__(*args, **kwargs)
+    
+    @classmethod
+    def from_config(cls, config):
+        """Override from_config to handle legacy 'groups' parameter"""
+        config = config.copy()
+        config.pop('groups', None)  # Remove groups from config
+        return cls(**config)
 
 def get_custom_objects():
     """Get all custom objects needed for model loading"""
