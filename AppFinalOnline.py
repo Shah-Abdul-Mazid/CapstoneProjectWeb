@@ -418,34 +418,26 @@ if not valid_models:
 
 DEFAULT_CONV_LAYER = "additional_gradcam_layer"  # Change if needed
 
-# ==================== CACHED MODEL DOWNLOADER + LOADER ====================
-@st.cache_resource(show_spinner="Downloading & loading model (200–400 MB)... Please wait 30–90 sec first time")
-def load_brain_model(url: str):
-    # Download to temp file
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".h5") as tmp:
-        tmp_path = tmp.name
-        
-        with st.spinner(f"Downloading model..."):
-            response = requests.get(url, stream=True)
-            response.raise_for_status()
-            total = int(response.headers.get('content-length', 0))
-            downloaded = 0
-            progress = st.progress(0)
-            
-            for chunk in response.iter_content(chunk_size=1024*1024):
-                if chunk:
-                    tmp.write(chunk)
-                    downloaded += len(chunk)
-                    if total:
-                        progress.progress(downloaded / total)
-            progress.empty()
-        
-        st.success("Model downloaded!")
+@st.cache_resource(show_spinner="Loading model... Please wait")
+def load_brain_model(MMODEL_PATHS):
+    """Load model from local path"""
+    path = Path(MODEL_PATHS)
     
-    # Load Keras model
-    model = load_model(tmp_path, compile=False)
-    os.unlink(tmp_path)  # Clean up
-    return model
+    if not path.exists():
+        st.error(f"❌ Model file not found: {path}")
+        logger.error(f"Model file not found: {path}")
+        raise FileNotFoundError(f"Model file not found: {path}")
+    
+    try:
+        with st.spinner(f"Loading model: {path.name}..."):
+            model = load_model(str(path), compile=False)
+        logger.info(f"Model loaded successfully: {path}")
+        return model
+    except Exception as e:
+        st.error(f"Error loading model: {str(e)}")
+        logger.error(f"Error loading model: {str(e)}")
+        raise
+    
 
 # ==================== PREPROCESS & GRAD-CAM ====================
 def preprocess_image(img: Image.Image):
