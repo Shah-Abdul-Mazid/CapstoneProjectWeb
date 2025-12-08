@@ -1017,10 +1017,9 @@ if not model_training_path.exists():
     st.error(f"Model directory not found: {model_training_path}")
     logger.error(f"Model directory not found: {model_training_path}")
     st.stop()
-
 # Model paths
 MODEL_PATHS = {
-    "Combined Dataset (Balanced)": model_training_path / "Combine3_dataset" / "Imbalance" / "FinalModel" / "Hybrid_MobDenseNet_CBAM_GradCAM.h5",
+    "Combined Dataset (Balanced)": model_training_path / "DatasetCombined" / "Balance"  / "Hybrid_MobDenseNet_CBAM_GradCAM.h5",
 }
 
 # Debug: Print paths
