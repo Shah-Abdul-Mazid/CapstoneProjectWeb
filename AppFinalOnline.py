@@ -592,6 +592,367 @@
 #     unsafe_allow_html=True
 # )
 
+
+
+# import streamlit as st
+# from tensorflow.keras.models import load_model
+# import tensorflow as tf
+# import numpy as np
+# from PIL import Image, ImageOps
+# import cv2
+# import time
+# import logging
+# from logging.handlers import RotatingFileHandler
+# from pathlib import Path
+# import platform
+# import warnings
+# import asyncio
+
+
+# # ==================== CONFIG ====================
+# st.set_page_config(
+#     page_title="Brain Tumor MRI Classifier",
+#     page_icon="🧠",
+#     layout="wide",
+#     initial_sidebar_state="expanded"
+# )
+
+# # Hide Streamlit default UI
+# st.markdown("""
+# <style>
+#     #MainMenu {visibility: hidden;}
+#     footer {visibility: hidden;}
+#     .stDeployButton {display: none;}
+# </style>
+# """, unsafe_allow_html=True)
+
+# CLASS_NAMES = ["Glioma", "Meningioma", "No Tumor", "Pituitary"]
+
+# # Setup logging
+# handler = RotatingFileHandler("app.log", maxBytes=10*1024*1024, backupCount=5)
+# logging.basicConfig(
+#     handlers=[handler],
+#     level=logging.INFO,
+#     format="%(asctime)s - %(levelname)s - %(message)s"
+# )
+# logger = logging.getLogger(__name__)
+
+# # Suppress specific warnings
+# if platform.system() == "Windows":
+#     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+# warnings.filterwarnings(
+#     "ignore",
+#     message="Thread 'MainThread': missing ScriptRunContext",
+#     module="streamlit.runtime.scriptrunner_utils"
+# )
+
+# ## Define base directory and model path
+# BASE_DIR = Path(__file__).parent
+# model_training_path = BASE_DIR / "models"
+
+# # Validate directories
+# if not model_training_path.exists():
+#     st.error(f"Model directory not found: {model_training_path}")
+#     logger.error(f"Model directory not found: {model_training_path}")
+#     st.stop()
+
+# # Model paths
+# MODEL_PATHS = {
+#     "Combined Dataset (Balanced)": model_training_path / "Combine3_dataset" / "Imbalance" / "FinalModel" / "Hybrid_MobDenseNet_CBAM_GradCAM.h5",
+# }
+
+# # Debug: Print paths
+# for name, path in MODEL_PATHS.items():
+#     logger.info(f"Checking model: {name} -> {path} (exists: {path.exists()})")
+
+# # Validate model paths
+# valid_models = {name: path for name, path in MODEL_PATHS.items() if path.exists()}
+
+# if not valid_models:
+#     st.error("No valid model files found. Please check the paths below:")
+#     for name, path in MODEL_PATHS.items():
+#         st.code(str(path))
+#         st.write(f"Exists: {path.exists()}")
+#     logger.error("No valid model files found in MODEL_PATHS.")
+#     st.stop()
+
+# DEFAULT_CONV_LAYER = "additional_gradcam_layer"
+
+# # ==================== CUSTOM LAYER FIX ====================
+# class FixedDepthwiseConv2D(tf.keras.layers.DepthwiseConv2D):
+#     """Custom DepthwiseConv2D that ignores 'groups' parameter"""
+#     def __init__(self, *args, **kwargs):
+#         # Remove 'groups' if present
+#         kwargs.pop('groups', None)
+#         super().__init__(*args, **kwargs)
+
+# # ==================== MODEL LOADER ====================
+# @st.cache_resource(show_spinner="Loading model... Please wait")
+# def load_brain_model(model_path):
+#     """Load model from local path with custom objects"""
+#     path = Path(model_path)
+    
+#     if not path.exists():
+#         st.error(f"❌ Model file not found: {path}")
+#         logger.error(f"Model file not found: {path}")
+#         raise FileNotFoundError(f"Model file not found: {path}")
+    
+#     try:
+#         with st.spinner(f"Loading model: {path.name}..."):
+#             # Custom objects to handle version incompatibilities
+#             custom_objects = {
+#                 'DepthwiseConv2D': FixedDepthwiseConv2D,
+#             }
+            
+#             model = load_model(str(path), custom_objects=custom_objects, compile=False)
+            
+#         logger.info(f"Model loaded successfully: {path}")
+#         st.success("✅ Model loaded successfully!")
+#         return model
+        
+#     except Exception as e:
+#         st.error(f"❌ Error loading model: {str(e)}")
+#         logger.error(f"Error loading model: {str(e)}")
+        
+#         # Show helpful error message
+#         st.info("""
+#         **Troubleshooting Tips:**
+#         - Ensure TensorFlow version matches the one used to train the model
+#         - Try: `pip install tensorflow==2.15.0`
+#         - Check if model file is corrupted
+#         """)
+#         raise
+
+# # ==================== PREPROCESS & GRAD-CAM ====================
+# def preprocess_image(img: Image.Image):
+#     """Preprocess image for model input"""
+#     img = ImageOps.fit(img, (224, 224), Image.LANCZOS)
+#     arr = np.array(img, dtype=np.float32) / 255.0
+#     return np.expand_dims(arr, axis=0)
+
+# def get_gradcam_heatmap(model, img_array, layer_name=DEFAULT_CONV_LAYER):
+#     """Generate Grad-CAM heatmap"""
+#     try:
+#         grad_model = tf.keras.models.Model(
+#             model.inputs, [model.get_layer(layer_name).output, model.output]
+#         )
+        
+#         with tf.GradientTape() as tape:
+#             conv_out, preds = grad_model(img_array)
+#             class_idx = tf.argmax(preds[0])
+#             class_out = preds[:, class_idx]
+        
+#         grads = tape.gradient(class_out, conv_out)
+#         pooled = tf.reduce_mean(grads, axis=(0, 1, 2))
+#         conv_out = conv_out[0]
+#         heatmap = conv_out @ pooled[..., tf.newaxis]
+#         heatmap = tf.squeeze(heatmap)
+#         heatmap = tf.maximum(heatmap, 0) / (tf.reduce_max(heatmap) + 1e-10)
+        
+#         return heatmap.numpy(), int(class_idx)
+        
+#     except Exception as e:
+#         st.error(f"Error generating Grad-CAM: {str(e)}")
+#         logger.error(f"Grad-CAM error: {str(e)}")
+#         raise
+
+# def overlay_heatmap(orig_img, heatmap, alpha=0.6):
+#     """Overlay heatmap on original image"""
+#     heatmap = cv2.resize(heatmap, (orig_img.width, orig_img.height))
+#     heatmap = np.uint8(255 * heatmap)
+#     heatmap = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
+#     overlay = heatmap * alpha + np.array(orig_img) * (1 - alpha)
+#     return Image.fromarray(np.uint8(overlay))
+
+# # ==================== SIDEBAR ====================
+# with st.sidebar:
+#     st.image("https://img.icons8.com/clouds/200/brain.png")
+#     st.title("Brain Tumor Classifier")
+#     st.markdown("### Hybrid MobileNetV2 + DenseNet121 + CBAM")
+    
+#     page = st.radio("Navigation", [
+#         "🏠 Home", 
+#         "🔬 Live Inference", 
+#         "🎯 Grad-CAM", 
+#         "ℹ️ About"
+#     ])
+
+# # ==================== HOME ====================
+# if page == "🏠 Home":
+#     st.markdown("<h1 style='text-align:center; color:#0B4F6C;'>Brain Tumor MRI Classification</h1>", unsafe_allow_html=True)
+#     st.markdown("<h3 style='text-align:center;'>Master's Thesis • 2025</h3>", unsafe_allow_html=True)
+    
+#     col1, col2 = st.columns(2)
+#     with col1:
+#         st.image("https://img.freepik.com/free-photo/doctor-with-mri-scan_23-2149366759.jpg?w=740")
+#     with col2:
+#         st.markdown("""
+#         ### Key Features
+#         - **98.7% Accuracy** on balanced test set
+#         - 4 Classes: Glioma • Meningioma • Pituitary • No Tumor
+#         - Hybrid Architecture: MobileNetV2 + DenseNet121
+#         - CBAM Attention Mechanism
+#         - Grad-CAM++ Explainability
+#         - Real-time inference on uploaded MRI
+        
+#         ---
+        
+#         ### How to Use
+#         1. Navigate to **Live Inference** or **Grad-CAM**
+#         2. Upload an MRI scan (JPG/PNG)
+#         3. Get instant predictions with confidence scores
+#         4. View heatmaps showing which regions influenced the prediction
+#         """)
+
+# # ==================== LIVE INFERENCE ====================
+# elif page == "🔬 Live Inference":
+#     st.header("📤 Upload MRI Scan")
+    
+#     model_choice = st.selectbox("Select Model", list(valid_models.keys()))
+    
+#     uploaded = st.file_uploader("Upload T1-weighted MRI (JPG/PNG)", type=["png", "jpg", "jpeg"])
+    
+#     if uploaded and model_choice:
+#         try:
+#             img = Image.open(uploaded).convert("RGB")
+#             img_array = preprocess_image(img)
+            
+#             with st.spinner("🔄 Loading model & running inference..."):
+#                 model = load_brain_model(valid_models[model_choice])
+#                 start = time.time()
+#                 pred = model.predict(img_array, verbose=0)[0]
+#                 inference_time = time.time() - start
+                
+#                 pred_class = CLASS_NAMES[np.argmax(pred)]
+#                 confidence = pred[np.argmax(pred)] * 100
+                
+#             # Result Card
+#             color = "#16A34A" if pred_class == "No Tumor" else "#DC2626"
+#             st.markdown(f"""
+#             <div style="background:linear-gradient(135deg, #F0F9FF, #E0F2FE); padding:30px; border-radius:20px; 
+#                         border-left:10px solid {color}; text-align:center; margin:20px 0;">
+#                 <h1 style="color:{color}; margin:0;">{pred_class}</h1>
+#                 <h3>Confidence: {confidence:.2f}%</h3>
+#                 <p>Inference Time: {inference_time:.3f}s</p>
+#             </div>
+#             """, unsafe_allow_html=True)
+            
+#             # Show prediction
+#             col1, col2 = st.columns(2)
+#             with col1:
+#                 st.image(img, caption="Input MRI", use_container_width=True)
+#             with col2:
+#                 st.markdown("### Class Probabilities")
+#                 st.bar_chart({name: float(p*100) for name, p in zip(CLASS_NAMES, pred)})
+                
+#         except Exception as e:
+#             st.error(f"Error during inference: {str(e)}")
+#             logger.error(f"Inference error: {str(e)}")
+
+# # ==================== GRAD-CAM ====================
+# elif page == "🎯 Grad-CAM":
+#     st.header("🔍 Grad-CAM++ Explainability")
+    
+#     col1, col2 = st.columns(2)
+#     with col1:
+#         model_choice = st.selectbox("Model", list(valid_models.keys()), key="gc")
+#     with col2:
+#         layer_name = st.text_input("Conv Layer Name", DEFAULT_CONV_LAYER, key="gc_layer")
+    
+#     uploaded = st.file_uploader("Upload MRI", type=["png", "jpg", "jpeg"], key="gc_up")
+    
+#     if uploaded:
+#         try:
+#             img = Image.open(uploaded).convert("RGB")
+#             img_array = preprocess_image(img)
+            
+#             model = load_brain_model(valid_models[model_choice])
+            
+#             with st.spinner("🎨 Generating Grad-CAM heatmap..."):
+#                 heatmap, idx = get_gradcam_heatmap(model, img_array, layer_name)
+#                 overlay = overlay_heatmap(img, heatmap)
+                
+#                 col1, col2 = st.columns(2)
+#                 with col1:
+#                     st.image(img, caption="Original MRI", use_container_width=True)
+#                 with col2:
+#                     st.image(overlay, caption=f"Grad-CAM → {CLASS_NAMES[idx]}", use_container_width=True)
+                    
+#                 st.success(f"🔴 Red/Yellow = Regions the model focused on to predict **{CLASS_NAMES[idx]}**")
+                
+#                 st.info("""
+#                 **Understanding Grad-CAM:**
+#                 - Brighter colors (red/yellow) = Higher importance
+#                 - Darker colors (blue/purple) = Lower importance
+#                 - Shows which brain regions influenced the model's decision
+#                 """)
+                
+#         except Exception as e:
+#             st.error(f"Error generating Grad-CAM: {str(e)}")
+#             logger.error(f"Grad-CAM error: {str(e)}")
+
+# # ==================== ABOUT ====================
+# elif page == "ℹ️ About":
+#     st.markdown("""
+#     # 📚 Master's Thesis Project
+#     ## Hybrid Deep Learning Model for Brain Tumor Classification from MRI Scans
+    
+#     ### 👨‍🎓 Project Details
+#     - **Author**: Shah Abdul Mazid
+#     - **Department**: Computer Science & Engineering
+#     - **Year**: 2025
+#     - **Accuracy**: 98.7% on balanced test set
+    
+#     ### 🏗️ Architecture
+#     This app demonstrates a state-of-the-art hybrid CNN with:
+#     - **Dual backbone**: MobileNetV2 + DenseNet121
+#     - **CBAM attention blocks**: Convolutional Block Attention Module
+#     - **Grad-CAM++ visualization**: Explainable AI
+#     - **4 tumor classes**: Glioma, Meningioma, Pituitary, No Tumor
+    
+#     ### 📊 Dataset
+#     - Combined dataset with balanced class distribution
+#     - T1-weighted MRI scans
+#     - Preprocessing: 224×224 resolution, normalized
+    
+#     ### 🔬 Model Performance
+#     - Training accuracy: 99.2%
+#     - Validation accuracy: 98.7%
+#     - Test accuracy: 98.7%
+#     - Inference time: ~0.2-0.5 seconds per image
+    
+#     ### 🛠️ Technology Stack
+#     - **Framework**: TensorFlow/Keras
+#     - **Frontend**: Streamlit
+#     - **Visualization**: OpenCV, Matplotlib
+#     - **Deployment**: Streamlit Cloud
+    
+#     ### 📝 Citation
+#     If you use this model or code, please cite:
+#     ```
+#     Shah Abdul Mazid (2025). Hybrid Deep Learning Model for Brain Tumor 
+#     Classification from MRI Scans. Master's Thesis, Computer Science & Engineering.
+#     ```
+    
+#     ### 📧 Contact
+#     For questions or collaboration: [Your Email]
+#     """)
+    
+#     st.markdown("---")
+#     st.info("⚠️ **Disclaimer**: This tool is for research and educational purposes only. It should not be used for clinical diagnosis without proper medical supervision.")
+
+# # ==================== FOOTER ====================
+# st.markdown("---")
+# st.markdown(
+#     "<p style='text-align:center; color:gray;'>"
+#     "© 2025 Shah Abdul Mazid • Master's Thesis • Brain Tumor Classification"
+#     "</p>",
+#     unsafe_allow_html=True
+# )
+
+
+
 import streamlit as st
 from tensorflow.keras.models import load_model
 import tensorflow as tf
@@ -685,6 +1046,28 @@ class FixedDepthwiseConv2D(tf.keras.layers.DepthwiseConv2D):
         kwargs.pop('groups', None)
         super().__init__(*args, **kwargs)
 
+def get_custom_objects():
+    """Get all custom objects needed for model loading"""
+    custom_objects = {
+        'DepthwiseConv2D': FixedDepthwiseConv2D,
+    }
+    
+    # Try to import TFOpLambda (may not exist in all versions)
+    try:
+        from tensorflow.python.keras.layers.core import TFOpLambda
+        custom_objects['TFOpLambda'] = TFOpLambda
+    except ImportError:
+        pass
+    
+    # Add other potentially missing layers
+    try:
+        from tensorflow.python.keras.engine.functional import Functional
+        custom_objects['Functional'] = Functional
+    except ImportError:
+        pass
+    
+    return custom_objects
+
 # ==================== MODEL LOADER ====================
 @st.cache_resource(show_spinner="Loading model... Please wait")
 def load_brain_model(model_path):
@@ -698,28 +1081,86 @@ def load_brain_model(model_path):
     
     try:
         with st.spinner(f"Loading model: {path.name}..."):
-            # Custom objects to handle version incompatibilities
-            custom_objects = {
-                'DepthwiseConv2D': FixedDepthwiseConv2D,
-            }
+            custom_objects = get_custom_objects()
             
-            model = load_model(str(path), custom_objects=custom_objects, compile=False)
+            # Method 1: Try with custom_object_scope
+            try:
+                with tf.keras.utils.custom_object_scope(custom_objects):
+                    model = tf.keras.models.load_model(
+                        str(path), 
+                        compile=False
+                    )
+                logger.info("Model loaded with custom_object_scope")
+                
+            except Exception as e1:
+                logger.warning(f"Method 1 failed: {str(e1)}")
+                
+                # Method 2: Try direct load with safe_mode=False
+                try:
+                    model = tf.keras.models.load_model(
+                        str(path),
+                        custom_objects=custom_objects,
+                        compile=False,
+                        safe_mode=False
+                    )
+                    logger.info("Model loaded with safe_mode=False")
+                    
+                except Exception as e2:
+                    logger.warning(f"Method 2 failed: {str(e2)}")
+                    
+                    # Method 3: Try with h5py directly (legacy format)
+                    try:
+                        from tensorflow.keras.models import load_model as legacy_load
+                        model = legacy_load(str(path), compile=False)
+                        logger.info("Model loaded with legacy loader")
+                        
+                    except Exception as e3:
+                        logger.error(f"All methods failed. Last error: {str(e3)}")
+                        raise e3
             
         logger.info(f"Model loaded successfully: {path}")
         st.success("✅ Model loaded successfully!")
         return model
         
     except Exception as e:
-        st.error(f"❌ Error loading model: {str(e)}")
-        logger.error(f"Error loading model: {str(e)}")
+        error_msg = str(e)
+        st.error(f"❌ Error loading model: {error_msg}")
+        logger.error(f"Error loading model: {error_msg}")
         
-        # Show helpful error message
-        st.info("""
-        **Troubleshooting Tips:**
-        - Ensure TensorFlow version matches the one used to train the model
-        - Try: `pip install tensorflow==2.15.0`
-        - Check if model file is corrupted
+        # Show specific troubleshooting based on error
+        if "TFOpLambda" in error_msg or "Unknown layer" in error_msg:
+            st.warning("""
+            ### 🔧 Model Compatibility Issue Detected
+            
+            Your model was saved with a different TensorFlow version. Here are solutions:
+            
+            **Option 1: Match TensorFlow Version (Recommended)**
+            - Check what version was used to train the model
+            - Install that version: `pip install tensorflow==X.XX`
+            - Common versions: 2.10, 2.12, 2.13, 2.15
+            
+            **Option 2: Re-save the Model**
+            If you have access to the training environment:
+            ```python
+            import tensorflow as tf
+            model = tf.keras.models.load_model('old_model.h5')
+            model.save('new_model.h5', save_format='h5')
+            ```
+            
+            **Option 3: Use SavedModel Format**
+            Convert to TensorFlow SavedModel format (more compatible):
+            ```python
+            model.save('model_savedmodel')  # No .h5 extension
+            ```
+            """)
+        
+        st.info(f"""
+        **Quick Checks:**
+        - TensorFlow version: `{tf.__version__}`
+        - Model path exists: `{path.exists()}`
+        - Model size: `{path.stat().st_size / (1024*1024):.1f} MB` if path.exists() else 'N/A'
         """)
+        
         raise
 
 # ==================== PREPROCESS & GRAD-CAM ====================
