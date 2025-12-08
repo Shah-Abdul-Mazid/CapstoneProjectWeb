@@ -361,7 +361,7 @@ st.markdown("""
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 MODEL_URLS = {
-    "Combined Dataset (Balanced)": BASE_DIR / "models"/"DatasetCombined"/"Balance"/"Hybrid_MobDenseNet_CBAM_GradCAM.h5"",
+    "Combined Dataset (Balanced)": BASE_DIR / "models"/"DatasetCombined"/"Balance"/"Hybrid_MobDenseNet_CBAM_GradCAM.h5",
     
     #"Dataset 2 (Balanced)": "https://github.com/Shah-Abdul-Mazid/CapstoneProjectWeb/raw/main/models/Dataset002/Balance/FinalModel/Hybrid_MobDenseNet_CBAM_GradCAM.h5",
     
