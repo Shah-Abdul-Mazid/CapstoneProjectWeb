@@ -419,7 +419,7 @@ if not valid_models:
 DEFAULT_CONV_LAYER = "additional_gradcam_layer"  # Change if needed
 
 @st.cache_resource(show_spinner="Loading model... Please wait")
-def load_brain_model(MMODEL_PATHS):
+def load_brain_model(MODEL_PATHS):
     """Load model from local path"""
     path = Path(MODEL_PATHS)
     
