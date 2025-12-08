@@ -385,67 +385,36 @@ warnings.filterwarnings(
     module="streamlit.runtime.scriptrunner_utils"
 )
 
-# Define base directory
+## Define base directory and model path
 BASE_DIR = Path(__file__).parent
+model_training_path = BASE_DIR / "models"  # This should contain your model folders
 
-# Class mapping for object detection
-
-# Define base directory and dataset path
-model_training_path = BASE_DIR / "models"
-
-# Validate base directory
-if not BASE_DIR.exists():
-    st.error(f"Base directory not found: {BASE_DIR}")
-    logger.error(f"Base directory not found: {BASE_DIR}")
-    st.stop()
-logger.info(f"Base Directory: {BASE_DIR}")
-
-# Validate dataset directory
+# Validate directories
 if not model_training_path.exists():
     st.error(f"Model directory not found: {model_training_path}")
     logger.error(f"Model directory not found: {model_training_path}")
     st.stop()
 
-# Function to get list of subdirectories (locations) recursively
-def get_dataset_locations(root_path):
-    """Get list of subdirectory names in the dataset path using os.walk."""
-    locations = []
-    for dirpath, dirnames, _ in os.walk(root_path):
-        for dirname in dirnames:
-            locations.append(dirname)
-    return sorted(locations) if locations else ["No subdirectories found"]
-
-# Dataset configuration
-
-MODEL_CONFIG = {
-    "model_training_path": model_training_path
-}
-
-# Model paths
+# Correct MODEL_PATHS using the variable, not string
 MODEL_PATHS = {
-    "Combined Dataset (Balanced)": BASE_DIR / "model_training_path"  /"Combine3_dataset"/"Imbalance"/"FinalModel"/"Hybrid_MobDenseNet_CBAM_GradCAM.h5",
-    # "YOLO10_with_AdamW": BASE_DIR / "model_training_path" / "yolov10_AdamW" / "weights" / "best.pt",
-    # "YOLO10_with_Adamax": BASE_DIR / "model_training_path" / "yolov10_Adamax" / "weights" / "best.pt",
-    # "YOLO10_with_Adam": BASE_DIR / "model_training_path" / "yolov10_Adam" / "weights" / "best.pt",
-    # "YOLO12_with_SGD": BASE_DIR / "model_training_path" / "yolo12_SGD" / "weights" / "best.pt",
-    # "YOLO12_with_AdamW": BASE_DIR / "model_training_path" / "yolo12_AdamW" / "weights" / "best.pt",
-    # "YOLO12_with_Adamax": BASE_DIR / "model_training_path" / "yolo12_Adamax" / "weights" / "best.pt",
-    # "YOLO12_with_Adam": BASE_DIR / "model_training_path" / "yolo12_Adam" / "weights" / "best.pt",
+    "Combined Dataset (Balanced)": model_training_path / "Combine3_dataset" / "Imbalance" / "FinalModel" / "Hybrid_MobDenseNet_CBAM_GradCAM.h5",
 }
+
+# Debug: Print paths (remove later if you want)
+for name, path in MODEL_PATHS.items():
+    logger.info(f"Checking model: {name} -> {path} (exists: {path.exists()})")
 
 # Validate model paths and filter valid models
 valid_models = {name: path for name, path in MODEL_PATHS.items() if path.exists()}
-for model_name, model_path in MODEL_PATHS.items():
-    if not model_path.exists():
-        logger.warning(f"Model file not found: {model_path}")
+
 if not valid_models:
-    st.error("No valid model files found. Please ensure model weights are in the correct paths.")
+    st.error("No valid model files found. Please check the paths below:")
+    for name, path in MODEL_PATHS.items():
+        st.code(str(path))
+        st.write(f"Exists: {path.exists()}")
     logger.error("No valid model files found in MODEL_PATHS.")
     st.stop()
-
-
-
-# MODEL_URLS = {
+    
 #     "Combined Dataset (Balanced)": BASE_DIR / "models"/"DatasetCombined"/"Balance"/"Hybrid_MobDenseNet_CBAM_GradCAM.h5",
     
 #     #"Dataset 2 (Balanced)": "https://github.com/Shah-Abdul-Mazid/CapstoneProjectWeb/raw/main/models/Dataset002/Balance/FinalModel/Hybrid_MobDenseNet_CBAM_GradCAM.h5",
