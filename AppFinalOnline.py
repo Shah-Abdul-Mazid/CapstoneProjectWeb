@@ -340,6 +340,13 @@ import requests
 import tempfile
 import os
 import time
+import logging
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
+import platform
+import warnings
+import asyncio
+
 
 # ==================== CONFIG ====================
 st.set_page_config(
@@ -357,20 +364,97 @@ st.markdown("""
     .stDeployButton {display: none;}
 </style>
 """, unsafe_allow_html=True)
+CLASS_NAMES = ["Glioma", "Meningioma", "No Tumor", "Pituitary"]
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# Setup logging
+handler = RotatingFileHandler("app.log", maxBytes=10*1024*1024, backupCount=5)
+logging.basicConfig(
+    handlers=[handler],
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
 
-MODEL_URLS = {
-    "Combined Dataset (Balanced)": BASE_DIR / "models"/"DatasetCombined"/"Balance"/"Hybrid_MobDenseNet_CBAM_GradCAM.h5",
-    
-    #"Dataset 2 (Balanced)": "https://github.com/Shah-Abdul-Mazid/CapstoneProjectWeb/raw/main/models/Dataset002/Balance/FinalModel/Hybrid_MobDenseNet_CBAM_GradCAM.h5",
-    
-    #"Dataset 1 (Balanced)": "https://github.com/Shah-Abdul-Mazid/CapstoneProjectWeb/raw/main/models/Dataset001/Balance/Hybrid_MobDenseNet_CBAM_GradCAM.h5",
-    
-    #"Combined 3 Datasets (Imbalanced)": "https://github.com/Shah-Abdul-Mazid/CapstoneProjectWeb/raw/main/models/Combine3_dataset/Imbalance/FinalModel/Hybrid_MobDenseNet_CBAM_GradCAM.h5"
+# Suppress specific warnings
+if platform.system() == "Windows":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+warnings.filterwarnings(
+    "ignore",
+    message="Thread 'MainThread': missing ScriptRunContext",
+    module="streamlit.runtime.scriptrunner_utils"
+)
+
+# Define base directory
+BASE_DIR = Path(__file__).parent
+
+# Class mapping for object detection
+
+# Define base directory and dataset path
+model_training_path = BASE_DIR / "model"
+
+# Validate base directory
+if not BASE_DIR.exists():
+    st.error(f"Base directory not found: {BASE_DIR}")
+    logger.error(f"Base directory not found: {BASE_DIR}")
+    st.stop()
+logger.info(f"Base Directory: {BASE_DIR}")
+
+# Validate dataset directory
+if not model_training_path.exists():
+    st.error(f"Model directory not found: {model_training_path}")
+    logger.error(f"Model directory not found: {model_training_path}")
+    st.stop()
+
+# Function to get list of subdirectories (locations) recursively
+def get_dataset_locations(root_path):
+    """Get list of subdirectory names in the dataset path using os.walk."""
+    locations = []
+    for dirpath, dirnames, _ in os.walk(root_path):
+        for dirname in dirnames:
+            locations.append(dirname)
+    return sorted(locations) if locations else ["No subdirectories found"]
+
+# Dataset configuration
+
+MODEL_CONFIG = {
+    "model_training_path": model_training_path
 }
 
-CLASS_NAMES = ["Glioma", "Meningioma", "No Tumor", "Pituitary"]
+# Model paths
+MODEL_PATHS = {
+    "Combined Dataset (Balanced)": BASE_DIR / "model_training_path"  /"DatasetCombined"/"Balance"/"Hybrid_MobDenseNet_CBAM_GradCAM.h5",
+    # "YOLO10_with_AdamW": BASE_DIR / "model_training_path" / "yolov10_AdamW" / "weights" / "best.pt",
+    # "YOLO10_with_Adamax": BASE_DIR / "model_training_path" / "yolov10_Adamax" / "weights" / "best.pt",
+    # "YOLO10_with_Adam": BASE_DIR / "model_training_path" / "yolov10_Adam" / "weights" / "best.pt",
+    # "YOLO12_with_SGD": BASE_DIR / "model_training_path" / "yolo12_SGD" / "weights" / "best.pt",
+    # "YOLO12_with_AdamW": BASE_DIR / "model_training_path" / "yolo12_AdamW" / "weights" / "best.pt",
+    # "YOLO12_with_Adamax": BASE_DIR / "model_training_path" / "yolo12_Adamax" / "weights" / "best.pt",
+    # "YOLO12_with_Adam": BASE_DIR / "model_training_path" / "yolo12_Adam" / "weights" / "best.pt",
+}
+
+# Validate model paths and filter valid models
+valid_models = {name: path for name, path in MODEL_PATHS.items() if path.exists()}
+for model_name, model_path in MODEL_PATHS.items():
+    if not model_path.exists():
+        logger.warning(f"Model file not found: {model_path}")
+if not valid_models:
+    st.error("No valid model files found. Please ensure model weights are in the correct paths.")
+    logger.error("No valid model files found in MODEL_PATHS.")
+    st.stop()
+
+
+
+# MODEL_URLS = {
+#     "Combined Dataset (Balanced)": BASE_DIR / "models"/"DatasetCombined"/"Balance"/"Hybrid_MobDenseNet_CBAM_GradCAM.h5",
+    
+#     #"Dataset 2 (Balanced)": "https://github.com/Shah-Abdul-Mazid/CapstoneProjectWeb/raw/main/models/Dataset002/Balance/FinalModel/Hybrid_MobDenseNet_CBAM_GradCAM.h5",
+    
+#     #"Dataset 1 (Balanced)": "https://github.com/Shah-Abdul-Mazid/CapstoneProjectWeb/raw/main/models/Dataset001/Balance/Hybrid_MobDenseNet_CBAM_GradCAM.h5",
+    
+#     #"Combined 3 Datasets (Imbalanced)": "https://github.com/Shah-Abdul-Mazid/CapstoneProjectWeb/raw/main/models/Combine3_dataset/Imbalance/FinalModel/Hybrid_MobDenseNet_CBAM_GradCAM.h5"
+# }
+
 DEFAULT_CONV_LAYER = "additional_gradcam_layer"  # Change if needed
 
 # ==================== CACHED MODEL DOWNLOADER + LOADER ====================
