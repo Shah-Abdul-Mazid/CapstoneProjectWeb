@@ -286,11 +286,11 @@ DEFAULT_LAST_CONV_LAYER = "additional_gradcam_layer"
 CLASS_NAMES = ["Glioma", "Meningioma", "No Tumor", "Pituitary"]
 
 # Google Drive File ID for your model
-GDRIVE_FILE_ID = "YOUR_GOOGLE_DRIVE_FILE_ID"  # <-- Replace with your ID
+GDRIVE_FILE_ID = "14DTJgVOMh-34350oyG0EPpJN6qwhMr8e"  # <-- Replace with your ID
 MODEL_DIR = "models"
 MODEL_FILENAME = "Hybrid_MobDenseNet_CBAM_GradCAM.h5"
 MODEL_PATH = os.path.join(MODEL_DIR, MODEL_FILENAME)
-MODEL_URL = f"https://drive.google.com/uc?id={GDRIVE_FILE_ID}"
+MODEL_URL = f"https://drive.google.com/file/d/14DTJgVOMh-34350oyG0EPpJN6qwhMr8e/view?usp=sharing".replace("14DTJgVOMh-34350oyG0EPpJN6qwhMr8e", GDRIVE_FILE_ID)
 
 os.makedirs(MODEL_DIR, exist_ok=True)
 
