@@ -18,10 +18,9 @@ import io
 import base64
 import os
 from typing import Tuple
-import time  # Added for measuring inference time
+import time  
 
-# ------------------- Configuration (edit these) -------------------
-MODEL_PATHS = {
+MODEL_PATHS = { 
     "Combined Dataset (Balanced)": r"E:\Final\CapstoneProject\models\DatasetCombined\Balance\Hybrid_MobDenseNet_CBAM_GradCAM.h5",
     # "Dataset 002 (Balanced)": r"E:\Final\CapstoneProject\models\Dataset002\Balance\Hybrid_MobDenseNet_CBAM_GradCAM.h5",
     # "Dataset 001 (Balanced)": r"E:\Final\CapstoneProject\models\Dataset001\Balance\Hybrid_MobDenseNet_CBAM_GradCAM.h5",
@@ -30,14 +29,13 @@ MODEL_PATHS = {
 CLASS_NAMES = ["Glioma", "Meningioma", "No Tumor", "Pituitary"]
 # The name of the last conv layer used for Grad-CAM (adjust to your model)
 DEFAULT_LAST_CONV_LAYER = "additional_gradcam_layer"
-# ------------------- Streamlit Page Config -------------------
+
 st.set_page_config(
     page_title="Brain Tumor MRI Classification — Thesis",
     page_icon="🧠",
     layout="wide",
     initial_sidebar_state="expanded",
 )
-# ------------------- CSS / THEME -------------------
 st.markdown(
     """
     <style>
@@ -317,35 +315,65 @@ elif selected == "Results & Metrics":
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.markdown('<p class="title-font">Results & Quantitative Metrics</p>', unsafe_allow_html=True)
     st.markdown("<p class='small'>Summary of evaluation metrics computed on the held-out test set.</p>", unsafe_allow_html=True)
+    
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Accuracy", "98.7%")
     col2.metric("Sensitivity", "98.4%")
     col3.metric("Specificity", "99.1%")
     col4.metric("F1-Score", "98.5%")
-    st.markdown("<h4>Confusion Matrix</h4>")
-    st.image("https://i.imgur.com/8Q2kR1p.png", caption="Confusion matrix (example)")
-    st.markdown("<h4>ROC Curves</h4>")
-    st.image("https://i.imgur.com/Xk9LmP2.png", caption="ROC curves (example)" )
+    
+    st.markdown("<h4>Confusion Matrices</h4>")
+    results_images = [
+        r"E:\Final\CapstoneProject\models\Dataset001\Balance\Results_Final\Hybrid_MobDenseNet_CBAM_GradCAM_confusion_matrix.png",
+        r"E:\Final\CapstoneProject\models\DatasetCombined\Balance\Results_Final\Hybrid_CBAM_MobDenseNet_confusion_matrix.png",
+        r"E:\Final\CapstoneProject\models\Combine3_dataset\Imbalance\Results_Final\Hybrid_MobDenseNet_CBAM_GradCAM_confusion_matrix.png"
+    ]
+    for img_path in results_images:
+        if os.path.exists(img_path):
+            st.image(img_path, caption=os.path.basename(img_path))
+        else:
+            st.warning(f"File not found: {img_path}")
+    
+    st.markdown("<h4>ROC Curves (example)</h4>")
+    roc_images = [
+        r"E:\Final\CapstoneProject\models\DatasetCombined\Balance\Results_Final\Hybrid_CBAM_MobDenseNet_ROC_curve.png",
+        # Add other ROC images if needed
+    ]
+    for img_path in roc_images:
+        if os.path.exists(img_path):
+            st.image(img_path, caption=os.path.basename(img_path))
+        else:
+            st.warning(f"File not found: {img_path}")
+    
     st.markdown("</div>", unsafe_allow_html=True)
+
 # ==================== DATASET PREVIEW ====================
 elif selected == "Dataset Preview":
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.markdown('<p class="title-font">Dataset Sample Images</p>', unsafe_allow_html=True)
-    cols = st.columns(4)
-    images = [
-        ("Glioma", "https://i.imgur.com/5V0g1eF.png"),
-        ("Meningioma", "https://i.imgur.com/3T2kLmN.png"),
-        ("No Tumor", "https://i.imgur.com/8P9kLm2.png"),
-        ("Pituitary", "https://i.imgur.com/7M3kPq1.png")
-    ]
-    for c, (label, url) in zip(cols, images):
-        c.image(url, caption=label )
+    
+    dataset_dirs = {
+        "Glioma": r"E:\Data001\Balanced_Split\train\glioma",
+        "Meningioma": r"E:\Data002\Balanced_Split\train\miningioma",
+        "No Tumor": r"E:\DataCombined\Balanced_Split\train\no_tumor",
+        "Pituitary": r"E:\DataCombined\Balanced_Split\train\pituitary"
+    }
+    
+    import glob
+    for label, folder in dataset_dirs.items():
+        st.markdown(f"**{label} samples:**")
+        cols = st.columns(4)
+        image_files = glob.glob(os.path.join(folder, "*.png")) + glob.glob(os.path.join(folder, "*.jpg")) + glob.glob(os.path.join(folder, "*.jpeg"))
+        for col, img_path in zip(cols, image_files[:4]):  # show first 4 images
+            col.image(img_path, caption=os.path.basename(img_path))
+    
     st.markdown("</div>", unsafe_allow_html=True)
 # Footer
 st.markdown("---")
 st.markdown("""
 <div class="footer">
-    <h4 style="margin:4px;">Master's Thesis Project • 2025</h4>
+    <h4 style="margin:4px;">BSc in CSE  Thesis Project • 2025</h4>
+    <h3 style="margin:3px;">Shah Abdul Mazid </h3>
     <div style="font-size:14px;">Hybrid Deep Learning for Brain Tumor Detection with Grad-CAM++</div>
 </div>
 """, unsafe_allow_html=True)
