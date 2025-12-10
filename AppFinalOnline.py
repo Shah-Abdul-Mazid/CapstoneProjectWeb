@@ -286,18 +286,22 @@ DEFAULT_LAST_CONV_LAYER = "additional_gradcam_layer"
 CLASS_NAMES = ["Glioma", "Meningioma", "No Tumor", "Pituitary"]
 
 # Google Drive File ID for your model
-GDRIVE_FILE_ID = "14DTJgVOMh-34350oyG0EPpJN6qwhMr8e"  # <-- Replace with your ID
+GDRIVE_FILE_ID = "14DTJgVOMh-34350oyG0EPpJN6qwhMr8e"  # <-- replace with your ID
 MODEL_DIR = "models"
 MODEL_FILENAME = "Hybrid_MobDenseNet_CBAM_GradCAM.h5"
 MODEL_PATH = os.path.join(MODEL_DIR, MODEL_FILENAME)
-MODEL_URL = f"https://drive.google.com/file/d/14DTJgVOMh-34350oyG0EPpJN6qwhMr8e/view?usp=sharing".replace("14DTJgVOMh-34350oyG0EPpJN6qwhMr8e", GDRIVE_FILE_ID)
+MODEL_URL = f"https://drive.google.com/uc?id={GDRIVE_FILE_ID}"
 
 os.makedirs(MODEL_DIR, exist_ok=True)
 
 # -----------------------------
 # PAGE CONFIG
 # -----------------------------
-st.set_page_config(page_title="Brain Tumor MRI Classification", page_icon="🧠", layout="wide")
+st.set_page_config(
+    page_title="Brain Tumor MRI Classification",
+    page_icon="🧠",
+    layout="wide"
+)
 
 # -----------------------------
 # CSS STYLING
@@ -307,10 +311,8 @@ st.markdown("""
 .big-font {font-size:44px !important; font-weight:700; color:#0B4F6C;}
 .title-font {font-size:22px !important; color:#0B3D91;}
 .small {font-size:14px; color:#222; line-height:1.5;}
-
 .card {background: #FFFFFF; border-radius: 10px; padding: 18px;
        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06); margin-bottom: 12px;}
-
 .footer {text-align:center; padding:14px; background-color:#0B1B2B;
          color:white; border-radius:8px;}
 </style>
@@ -327,13 +329,11 @@ def load_brain_model(model_path: str = MODEL_PATH, model_url: str = MODEL_URL) -
         st.success("Model downloaded successfully!")
     return load_model(model_path, compile=False)
 
-
 @st.cache_data
 def preprocess_image(img: Image.Image, target_size=(224, 224)) -> np.ndarray:
     img = ImageOps.fit(img, target_size, Image.LANCZOS)
     arr = np.asarray(img).astype(np.float32) / 255.0
     return np.expand_dims(arr, axis=0)
-
 
 def get_gradcam_heatmap(model: tf.keras.Model, img_array: np.ndarray,
                         last_conv_layer_name: str = DEFAULT_LAST_CONV_LAYER) -> Tuple[np.ndarray, int]:
@@ -352,12 +352,12 @@ def get_gradcam_heatmap(model: tf.keras.Model, img_array: np.ndarray,
     pooled_grads = pooled_grads.numpy()
     for i in range(pooled_grads.shape[-1]):
         conv_outputs[:, :, i] *= pooled_grads[i]
+
     heatmap = np.sum(conv_outputs, axis=-1)
     heatmap = np.maximum(heatmap, 0)
     max_val = np.max(heatmap) if np.max(heatmap) != 0 else 1e-10
     heatmap /= max_val
     return heatmap, int(pred_index.numpy())
-
 
 def overlay_heatmap(img_pil: Image.Image, heatmap: np.ndarray, alpha: float = 0.5) -> Image.Image:
     heatmap_resized = cv2.resize(heatmap, (img_pil.width, img_pil.height))
@@ -367,12 +367,10 @@ def overlay_heatmap(img_pil: Image.Image, heatmap: np.ndarray, alpha: float = 0.
     superimposed = cv2.addWeighted(img_np, 1 - alpha, heatmap_color, alpha, 0)
     return Image.fromarray(superimposed)
 
-
 def pil_image_to_bytes(img: Image.Image, fmt: str = "PNG") -> bytes:
     buf = io.BytesIO()
     img.save(buf, format=fmt)
     return buf.getvalue()
-
 
 # -----------------------------
 # SIDEBAR NAVIGATION
@@ -386,7 +384,6 @@ with st.sidebar:
         default_index=0
     )
 
-
 # -----------------------------
 # HOME PAGE
 # -----------------------------
@@ -398,7 +395,6 @@ if selected == "Home":
     st.image("assets/home_banner.jpg")
     st.markdown("</div>", unsafe_allow_html=True)
 
-
 # -----------------------------
 # MODEL INFERENCE
 # -----------------------------
@@ -407,8 +403,8 @@ elif selected == "Model Inference":
     st.markdown('<div class="title-font">Model Inference</div>', unsafe_allow_html=True)
 
     model = load_brain_model()
-
     uploaded = st.file_uploader("Upload MRI Image", type=["png", "jpg", "jpeg"])
+
     if uploaded:
         img = Image.open(uploaded).convert("RGB")
         st.image(img, caption="Uploaded Image")
@@ -421,7 +417,6 @@ elif selected == "Model Inference":
         pred_idx = int(np.argmax(preds))
         pred_class = CLASS_NAMES[pred_idx]
         confidence = preds[pred_idx] * 100
-
         border = "#0B63D6" if pred_class == "No Tumor" else "#C62828"
 
         st.markdown(f"""
@@ -435,7 +430,6 @@ elif selected == "Model Inference":
         st.bar_chart({c: float(p) for c, p in zip(CLASS_NAMES, preds)})
 
     st.markdown("</div>", unsafe_allow_html=True)
-
 
 # -----------------------------
 # GRAD-CAM
@@ -465,7 +459,6 @@ elif selected == "Grad-CAM Analysis":
 
     st.markdown("</div>", unsafe_allow_html=True)
 
-
 # -----------------------------
 # DATASET PREVIEW
 # -----------------------------
@@ -473,7 +466,7 @@ elif selected == "Dataset Preview":
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.markdown('<div class="title-font">Dataset Samples</div>', unsafe_allow_html=True)
 
-    SAMPLE_DIR = os.path.join("sample_data")
+    SAMPLE_DIR = "sample_data"
     class_dirs = {cls: os.path.join(SAMPLE_DIR, cls.lower()) for cls in CLASS_NAMES}
 
     for label, folder in class_dirs.items():
@@ -486,7 +479,6 @@ elif selected == "Dataset Preview":
             col.image(os.path.join(folder, img_name))
 
     st.markdown("</div>", unsafe_allow_html=True)
-
 
 # -----------------------------
 # FOOTER
