@@ -362,9 +362,9 @@ elif selected == "Dataset Preview":
     import glob
     for label, folder in dataset_dirs.items():
         st.markdown(f"**{label} samples:**")
-        cols = st.columns(4)
+        cols = st.columns(16)
         image_files = glob.glob(os.path.join(folder, "*.png")) + glob.glob(os.path.join(folder, "*.jpg")) + glob.glob(os.path.join(folder, "*.jpeg"))
-        for col, img_path in zip(cols, image_files[:4]):  # show first 4 images
+        for col, img_path in zip(cols, image_files[:16]): 
             col.image(img_path, caption=os.path.basename(img_path))
     
     st.markdown("</div>", unsafe_allow_html=True)
@@ -372,8 +372,8 @@ elif selected == "Dataset Preview":
 st.markdown("---")
 st.markdown("""
 <div class="footer">
-    <h4 style="margin:4px;">BSc in CSE  Thesis Project • 2025</h4>
-    <h3 style="margin:3px;">Shah Abdul Mazid </h3>
+    <h4 style="margin:4px;">BSc in CSE  , East West University • 2025</h4>
+    <h5 style="margin:3px;"> Shah Abdul Mazid , Md.Omor Faruk Sejan , Chaity Bhuiyan and Syed Ridwan Ahmed Fahim </h2>
     <div style="font-size:14px;">Hybrid Deep Learning for Brain Tumor Detection with Grad-CAM++</div>
 </div>
 """, unsafe_allow_html=True)
