@@ -159,7 +159,7 @@ if selected == "Home":
     col1, col2 = st.columns([2, 3])
     with col1:
         st.image(
-    "https://img.freepik.com/free-photo/doctor-holding-mri-brain-scan_23-2149366759.jpg",
+    r"E:\Final\CapstoneProject\doctor-getting-patient-ready-ct-scan.jpg",
     caption="MRI Scan (illustrative)")
     with col2:
         st.markdown("""
